@@ -60,7 +60,7 @@ COPY --from=builder /usr/local /usr/local
 COPY . $APP_HOME/
 
 # Collecter les fichiers statiques
-RUN python manage.py collectstatic --noinput
+RUN python $APP_HOME/app/manage.py collectstatic --noinput
 
 # Configurer Nginx
 COPY ./nginx.conf /etc/nginx/sites-available/default
