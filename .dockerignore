@@ -1,0 +1,13 @@
+.git
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+venv
+django_env
+env
+.DS_Store
+.env
+docker-compose.yml
+Dockerfile
+README.md
