@@ -52,7 +52,7 @@ COPY --from=builder /usr/local /usr/local
 COPY . $APP_HOME/
 
 # Collecter les fichiers statiques
-RUN python $APP_HOME/./app/manage.py collectstatic --noinput
+RUN python manage.py collectstatic --noinput
 
 # Configurer Nginx
 COPY ./nginx.conf /etc/nginx/sites-available/default
@@ -64,4 +64,4 @@ RUN chmod +x $APP_HOME/entrypoint.sh
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "gunicorn app.app.wsgi:application --bind 0.0.0.0:8000 --workers 3 & nginx -g 'daemon off;'"]
+CMD ["sh", "-c", "gunicorn app.wsgi:application --bind 0.0.0.0:8000 --workers 3 & nginx -g 'daemon off;'"]
