@@ -4,6 +4,7 @@ FROM python:3.11-slim AS builder
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     APP_HOME=/app \
+    PYTHONPATH=/app \
     DEBIAN_FRONTEND=noninteractive
 
 WORKDIR $APP_HOME
