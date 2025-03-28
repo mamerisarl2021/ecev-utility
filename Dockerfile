@@ -66,6 +66,7 @@
 
 # CMD ["sh", "-c", "gunicorn app.app.wsgi:application --bind 0.0.0.0:8000 --workers 3 & nginx -g 'daemon off;'"]
 # Stage 1: Builder stage for Python dependencies
+
 FROM python:3.11-slim AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -111,7 +112,7 @@ COPY --from=builder /usr/local /usr/local
 COPY . .
 
 # Collecter les fichiers statiques
-RUN python manage.py collectstatic --noinput
+RUN python app/manage.py collectstatic --noinput
 
 # Configurer Nginx
 COPY nginx.conf /etc/nginx/sites-available/default
