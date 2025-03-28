@@ -60,6 +60,7 @@ RUN python manage.py collectstatic --noinput
 COPY ./nginx.conf /etc/nginx/sites-available/default
 RUN cp .env.prod .env && sed -i 's/DEBUG=1/DEBUG=0/g' .env
 RUN ln -sf /etc/nginx/sites-available/default /etc/nginx/sites-enabled/
+RUN apt-get update && apt-get install -y libdmtx0b
 
 # Donner les permissions nécessaires
 RUN chmod +x $APP_HOME/entrypoint.sh
