@@ -13,6 +13,7 @@ WORKDIR $APP_HOME
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
        build-essential \
+       libdmtx0b \
        libpq-dev \
        ca-certificates \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
