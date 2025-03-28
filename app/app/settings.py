@@ -53,7 +53,7 @@ INSTALLED_APPS = [
     # CORS
     'corsheaders',
     #OWN APPS
-    'app.api.apps.ApiConfig',
+    'api.apps.ApiConfig',
 ]
 
 LOGIN_URL='/admin/'
