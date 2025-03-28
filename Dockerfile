@@ -72,4 +72,4 @@ RUN chmod +x $APP_HOME/entrypoint.sh
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 & nginx -g 'daemon off;'"]
+CMD ["sh", "-c", "gunicorn app.wsgi:application --bind 0.0.0.0:8000 --workers 3 & nginx -g 'daemon off;'"]
