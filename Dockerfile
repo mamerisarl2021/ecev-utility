@@ -64,6 +64,7 @@ RUN python $APP_HOME/app/manage.py collectstatic --noinput
 
 # Configurer Nginx
 COPY ./nginx.conf /etc/nginx/sites-available/default
+RUN cp .env.prod .env && sed -i 's/DEBUG=1/DEBUG=0/g' .env
 RUN ln -sf /etc/nginx/sites-available/default /etc/nginx/sites-enabled/
 
 # Donner les permissions nécessaires
