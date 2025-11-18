@@ -36,7 +36,7 @@ jobs:
           password: ${{ secrets.SSH_PASSWORD }}
           port: 22
           script: |
-            cd /srv/cev-utility/;
+            cd /home/djamal/cev-utility/;
             docker rm mamerisarl/ecev-utility:stagging;
             docker compose down;
             docker system prune -f;
