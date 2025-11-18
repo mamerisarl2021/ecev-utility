@@ -249,124 +249,153 @@ def verify_data(request):
 
 
 def validate(type_name, data):
-    # Récupérer le manifeste
+    """
+    Validate a payload against the manifest schema.
+    """
     with urllib.request.urlopen(f'https://public.qcdigitalhub.com/manifests/manifeste-{type_name}.xml') as file:
         manifest_data = file.read()
 
     manifest = etree.fromstring(manifest_data)
-    schema = manifest.find('.//Schema')
-    payload = schema.find('.//Payload')
-    fields = payload.find('.//Fields')
+    schema_elem = manifest.find('.//Schema')
+    payload_elem = schema_elem.find('.//Payload')
+    fields_elem = payload_elem.find('.//Fields')
+
+    # Build a dictionary of types for object validation
+    types = {}
+    for type_elem in schema_elem.findall('.//Type'):
+        types[type_elem.get('name')] = type_elem
 
     errors = []
 
-    def validate_field(field_element, field_value, parent_name=''):
-        field_type = field_element.get('type') or field_element.tag
-        field_name = field_element.get('name')
-        full_name = f"{parent_name}.{field_name}" if parent_name else field_name
-
-        # Vérifier si le champ est obligatoire
-        nillable = field_element.find('.//Nillable') is not None
-        if field_value is None:
-            if not nillable:
-                errors.append(f"{full_name} is required")
-            return
-
-        # String
-        if field_type.lower() == 'string':
-            string_constraints = field_element.find('.//StringConstraints')
-            if string_constraints is not None:
-                if string_constraints.find('.//MaxLength') is not None:
-                    max_length = int(string_constraints.find('.//MaxLength').text)
-                    if len(str(field_value)) > max_length:
-                        errors.append(f"{full_name} must be at most {max_length} characters long")
-                if string_constraints.find('.//MinLength') is not None:
-                    min_length = int(string_constraints.find('.//MinLength').text)
-                    if len(str(field_value)) < min_length:
-                        errors.append(f"{full_name} must be at least {min_length} characters long")
-                if string_constraints.find('.//Pattern') is not None:
-                    pattern = string_constraints.find('.//Pattern').text
-                    if not re.match(pattern, str(field_value)):
-                        errors.append(f"{full_name} does not match pattern constraint")
-
-        # Integer
-        elif field_type.lower() == 'integer':
-            integer_constraints = field_element.find('.//IntegerConstraints')
-            try:
-                val = int(field_value)
-                if integer_constraints is not None:
-                    if integer_constraints.find('.//Min') is not None:
-                        min_val = int(integer_constraints.find('.//Min').text)
-                        if val < min_val:
-                            errors.append(f"{full_name} must be at least {min_val}")
-                    if integer_constraints.find('.//Max') is not None:
-                        max_val = int(integer_constraints.find('.//Max').text)
-                        if val > max_val:
-                            errors.append(f"{full_name} must be at most {max_val}")
-            except:
-                errors.append(f"{full_name} must be an integer")
-
-        # Date
-        elif field_type.lower() == 'date':
-            date_constraints = field_element.find('.//DateConstraints')
-            try:
-                field_date = date.fromisoformat(field_value)
-                if date_constraints is not None:
-                    if date_constraints.find('.//From') is not None:
-                        from_date = date.fromisoformat(date_constraints.find('.//From').text)
-                        if field_date < from_date:
-                            errors.append(f"{full_name} must be on or after {from_date.isoformat()}")
-            except:
-                errors.append(f"{full_name} must be a valid date (YYYY-MM-DD)")
+    def validate_field(field_elem, value, parent_name=""):
+        full_name = f"{parent_name}.{field_elem.get('name')}" if parent_name else field_elem.get('name')
+        field_type = field_elem.tag.lower()
 
         # Object
-        elif field_type.lower() == 'object':
-            type_ref = field_element.get('type')
-            # trouver le type dans <Types>
-            type_def = schema.find(f".//Type[@name='{type_ref}']")
-            if type_def is not None:
-                sub_fields = type_def.find('.//Fields')
-                for sub_field in sub_fields:
-                    sub_value = field_value.get(sub_field.get('name')) if isinstance(field_value, dict) else None
+        if field_type == "object":
+            type_ref = field_elem.get('type')
+            type_def = types.get(type_ref)
+            if type_def is None:
+                errors.append(f"{full_name}: unknown object type {type_ref}")
+                return
+            if not isinstance(value, dict):
+                errors.append(f"{full_name} must be an object")
+                return
+            sub_fields = type_def.find('.//Fields')
+            for sub_field in sub_fields:
+                sub_value = value.get(sub_field.get('name'))
+                # Check nillable
+                nillable = sub_field.find('.//Nillable') is not None
+                if sub_value is None and not nillable:
+                    errors.append(f"{full_name}.{sub_field.get('name')} is required")
+                elif sub_value is not None:
                     validate_field(sub_field, sub_value, full_name)
 
         # ObjectArray
-        elif field_type.lower() == 'objectarray':
-            type_ref = field_element.get('type')
-            type_def = schema.find(f".//Type[@name='{type_ref}']")
-            if isinstance(field_value, list) and type_def is not None:
-                sub_fields = type_def.find('.//Fields')
-                for idx, item in enumerate(field_value):
-                    for sub_field in sub_fields:
-                        sub_value = item.get(sub_field.get('name'))
-                        validate_field(sub_field, sub_value, f"{full_name}[{idx}]")
-            else:
+        elif field_type == "objectarray":
+            if not isinstance(value, list):
                 errors.append(f"{full_name} must be an array of objects")
+                return
+            type_ref = field_elem.get('type')
+            type_def = types.get(type_ref)
+            if type_def is None:
+                errors.append(f"{full_name}: unknown object array type {type_ref}")
+                return
+            sub_fields = type_def.find('.//Fields')
+            for i, item in enumerate(value):
+                if not isinstance(item, dict):
+                    errors.append(f"{full_name}[{i}] must be an object")
+                    continue
+                for sub_field in sub_fields:
+                    sub_value = item.get(sub_field.get('name'))
+                    nillable = sub_field.find('.//Nillable') is not None
+                    if sub_value is None and not nillable:
+                        errors.append(f"{full_name}[{i}].{sub_field.get('name')} is required")
+                    elif sub_value is not None:
+                        validate_field(sub_field, sub_value, f"{full_name}[{i}]")
+
+        # String
+        elif field_type == "string":
+            if not isinstance(value, str):
+                errors.append(f"{full_name} must be a string")
+                return
+            constraints = field_elem.find('.//StringConstraints')
+            if constraints is not None:
+                max_length = constraints.findtext('MaxLength')
+                min_length = constraints.findtext('MinLength')
+                pattern = constraints.findtext('Pattern')
+                if max_length and len(value) > int(max_length):
+                    errors.append(f"{full_name} must be at most {max_length} characters long")
+                if min_length and len(value) < int(min_length):
+                    errors.append(f"{full_name} must be at least {min_length} characters long")
+                if pattern and not re.match(pattern, value):
+                    errors.append(f"{full_name} does not match pattern {pattern}")
 
         # StringArray
-        elif field_type.lower() == 'stringarray':
-            if isinstance(field_value, list):
-                array_constraints = field_element.find('.//ArrayConstraints')
-                if array_constraints is not None:
-                    if array_constraints.find('.//MinSize') is not None:
-                        min_size = int(array_constraints.find('.//MinSize').text)
-                        if len(field_value) < min_size:
-                            errors.append(f"{full_name} must have at least {min_size} elements")
-                    if array_constraints.find('.//MaxSize') is not None:
-                        max_size = int(array_constraints.find('.//MaxSize').text)
-                        if len(field_value) > max_size:
-                            errors.append(f"{full_name} must have at most {max_size} elements")
-                string_constraints = field_element.find('.//StringConstraints')
-                if string_constraints is not None:
-                    for idx, val in enumerate(field_value):
-                        validate_field(field_element, val, f"{full_name}[{idx}]")
-            else:
+        elif field_type == "stringarray":
+            if not isinstance(value, list):
                 errors.append(f"{full_name} must be an array of strings")
+                return
+            constraints = field_elem.find('.//ArrayConstraints')
+            if constraints is not None:
+                min_size = constraints.findtext('MinSize')
+                max_size = constraints.findtext('MaxSize')
+                if min_size and len(value) < int(min_size):
+                    errors.append(f"{full_name} must have at least {min_size} elements")
+                if max_size and len(value) > int(max_size):
+                    errors.append(f"{full_name} must have at most {max_size} elements")
+            string_constraints = field_elem.find('.//StringConstraints')
+            for i, item in enumerate(value):
+                if not isinstance(item, str):
+                    errors.append(f"{full_name}[{i}] must be a string")
+                elif string_constraints is not None:
+                    max_length = string_constraints.findtext('MaxLength')
+                    min_length = string_constraints.findtext('MinLength')
+                    pattern = string_constraints.findtext('Pattern')
+                    if max_length and len(item) > int(max_length):
+                        errors.append(f"{full_name}[{i}] must be at most {max_length} characters long")
+                    if min_length and len(item) < int(min_length):
+                        errors.append(f"{full_name}[{i}] must be at least {min_length} characters long")
+                    if pattern and not re.match(pattern, item):
+                        errors.append(f"{full_name}[{i}] does not match pattern {pattern}")
 
-    # Valider tous les champs du payload
-    for field in fields:
-        value = data.get(field.get('name')) if isinstance(data, dict) else None
-        validate_field(field, value)
+        # Integer
+        elif field_type == "integer":
+            if not isinstance(value, int):
+                errors.append(f"{full_name} must be an integer")
+                return
+            constraints = field_elem.find('.//IntegerConstraints')
+            if constraints is not None:
+                min_val = constraints.findtext('Min')
+                max_val = constraints.findtext('Max')
+                if min_val and value < int(min_val):
+                    errors.append(f"{full_name} must be at least {min_val}")
+                if max_val and value > int(max_val):
+                    errors.append(f"{full_name} must be at most {max_val}")
+
+        # Date
+        elif field_type == "date":
+            try:
+                parsed_date = date.fromisoformat(value)
+            except Exception:
+                errors.append(f"{full_name} must be a valid date in YYYY-MM-DD format")
+                return
+            constraints = field_elem.find('.//DateConstraints')
+            if constraints is not None:
+                from_date = constraints.findtext('From')
+                to_date = constraints.findtext('To')
+                if from_date and parsed_date < date.fromisoformat(from_date):
+                    errors.append(f"{full_name} must be on or after {from_date}")
+                if to_date and parsed_date > date.fromisoformat(to_date):
+                    errors.append(f"{full_name} must be on or before {to_date}")
+
+    for field in fields_elem:
+        field_value = data.get(field.get('name'))
+        nillable = field.find('.//Nillable') is not None
+        if field_value is None and not nillable:
+            errors.append(f"{field.get('name')} is required")
+        elif field_value is not None:
+            validate_field(field, field_value)
 
     return errors
 
