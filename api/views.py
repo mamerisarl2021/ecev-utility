@@ -55,14 +55,14 @@ class revoked(APIView):
 
     def post(self, request, *args, **kwargs):
         cn = kwargs['cn']
-        with urllib.request.urlopen('http://signserver.qcdigitalhub.com/CRL/csca.crl') as file:
+        with urllib.request.urlopen('https://public.qcdigitalhub.com/crl/csca.crl') as file:
             binary_data = file.read()
         crl = x509.load_pem_x509_crl(binary_data)
-        with urllib.request.urlopen('http://signserver.qcdigitalhub.com/CERTS/'+cn+'.pem') as file:
-            # with urllib.request.urlopen('http://signserver.qcdigitalhub.com/CERTS/eCEV-SignerCert1-ECDSA.pem') as file:
+        with urllib.request.urlopen('https://public.qcdigitalhub.com/certs/'+cn+'.pem') as file:
+            # with urllib.request.urlopen('https://public.qcdigitalhub.com/CERTS/eCEV-SignerCert1-ECDSA.pem') as file:
             binary_cert = file.read()
         cert = x509.load_pem_x509_certificate(binary_cert)
-        with urllib.request.urlopen('http://signserver.qcdigitalhub.com/CERTS/CAcert.pem') as file:
+        with urllib.request.urlopen('https://public.qcdigitalhub.com/certs/CAcert.pem') as file:
             binary_ca_cert = file.read()
         cacert = x509.load_pem_x509_certificate(binary_ca_cert)
         public_key = cacert.public_key()
@@ -139,7 +139,7 @@ def verify_data(request):
 
 def validate(type, data):
     # pip install lxml
-    with urllib.request.urlopen('http://signserver.qcdigitalhub.com/MANIFESTS/manifeste-'+type+'.xml') as file:
+    with urllib.request.urlopen('https://public.qcdigitalhub.com/manifests/manifeste-'+type+'.xml') as file:
         manifest_data = file.read()
     # Parse the manifest file
     manifest = etree.fromstring(manifest_data)
@@ -248,10 +248,10 @@ def validate(type, data):
     return errors
 
 def check_schema(type):
-    with urllib.request.urlopen('http://signserver.qcdigitalhub.com/MANIFESTS/manifeste-'+type+'.xml') as file:
+    with urllib.request.urlopen('https://public.qcdigitalhub.com/manifests/manifeste-'+type+'.xml') as file:
         xml_data = file.read()
 
-    with urllib.request.urlopen('http://signserver.qcdigitalhub.com/XSDs/manifeste-'+type+'.xsd') as file:
+    with urllib.request.urlopen('https://public.qcdigitalhub.com/xsds/manifeste-'+type+'.xsd') as file:
         xsd_data = file.read()
 
     # Parse the XSD file
@@ -341,7 +341,7 @@ def verifiysignature(request):
     signature = base64.b64decode(signature_b32)
     # data_to_verify = 'DC04FR000001198519D31201FR90MAITRE/SPECIMEN/NATACHA<GS>92RAISON SOCIALE DE TEST<GS>94SAISIE CONSERVATOIREDE CREANCES<GS>9621112017<GS>91MME/BERTHIER/CORINNE<GS>93RAISON SOCIALE DU TIERS CONCERNE<GS>951896547853AB<GS>0CNB2WS43TNFSXELLKOVZXI2LDMUXGM4RPGE4DSNRVGQ3TQNJTIFBA<GS>'.encode()
     data_to_verify = splited[0].encode()
-    with urllib.request.urlopen('http://signserver.qcdigitalhub.com/CERTS/'+request.data['certid']+'.pem') as file:
+    with urllib.request.urlopen('https://public.qcdigitalhub.com/certs/'+request.data['certid']+'.pem') as file:
         binary_cert = file.read()
     cert = x509.load_pem_x509_certificate(binary_cert)
     public_key = cert.public_key()
@@ -377,7 +377,7 @@ def verifiysignature(request):
 
 
 def get_pub_key(cn):
-    with urllib.request.urlopen('http://signserver.qcdigitalhub.com/CERTS/'+cn+'.pem') as file:
+    with urllib.request.urlopen('https://public.qcdigitalhub.com/certs/'+cn+'.pem') as file:
         binary_cert = file.read()
     cert = x509.load_pem_x509_certificate(binary_cert)
     public_key = cert.public_key()

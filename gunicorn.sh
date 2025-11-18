@@ -19,8 +19,8 @@ pip3 install django
 
 cd /usr/src/ecev-utility/app 
 
-echo "from django.contrib.auth.models import User; User.objects.filter(email='gdjamal@mameribj.com').delete(); User.objects.create_superuser('mameri', 'gdjamal@mameribj.com', 'R00t#123E')" | python3 manage.py shell
-# python3 DJANGO_SUPERUSER_PASSWORD=ammin ./manage.py createsuperuser --noinput --username mamerisarl --email gdjamal@mameribj.com > password.txt
+echo "from django.contrib.auth.models import User; User.objects.filter(email='gdjamal@qcdigitalhub.com').delete(); User.objects.create_superuser('mameri', 'gdjamal@qcdigitalhub.com', 'R00t#123E')" | python3 manage.py shell
+# python3 DJANGO_SUPERUSER_PASSWORD=ammin ./manage.py createsuperuser --noinput --username mamerisarl --email gdjamal@qcdigitalhub.com > password.txt
 
 # python3 manage.py makemigrations
 
